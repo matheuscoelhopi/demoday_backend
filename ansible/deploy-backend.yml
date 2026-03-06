@@ -1,0 +1,25 @@
+---
+- name: Deploy FastAPI Backend Container
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Fazer login no GHCR
+      shell: "echo '{{ ghcr_token }}' | docker login ghcr.io -u {{ ghcr_user }} --password-stdin"
+      no_log: true
+
+    - name: Puxar a nova imagem do backend
+      shell: "docker pull {{ app_image }}"
+
+    - name: Parar o container do backend (se existir)
+      shell: "docker stop fastapi-backend || true"
+
+    - name: Remover o container do backend (se existir)
+      shell: "docker rm fastapi-backend || true"
+
+    - name: Subir a nova versão da API FastAPI
+      # Injetamos a variável CORS dinamicamente para permitir que o Frontend acesse a API
+      shell: "docker run -d --name fastapi-backend --restart unless-stopped -p 8000:8000 -e CORS='{{ frontend_url }}' {{ app_image }}"
+
+    - name: Limpeza de disco
+      shell: "docker image prune -a -f"
